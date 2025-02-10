@@ -33,9 +33,9 @@ const int echoPin = 13;  // D7 (GPIO13)
 const int maxDistance = 10; // Cup detection range
 
 // led red pin on D3
-const int ledRed = D6; // D3
+const int ledRed = D3; // D3
 // led green pin on D6
-const int ledGreen = D3; // D6
+const int ledGreen = D6; // D6
 void indicateSuccess();
 void indicateError();
 // Relays for valve and water pump
@@ -131,8 +131,8 @@ void setup() {
     delay(3000);
 
     lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Choose Input:");
+    lcd.setCursor(1,0);
+    lcd.print(" Type Input:");
     lcd.setCursor(0,1);
     lcd.print("A: Amount in RWF");
     lcd.setCursor(0,2);
@@ -165,8 +165,24 @@ void loop() {
           lcd.clear();
           lcd.setCursor(0,0);
           lcd.print("Input cleared");
+          delay(1000);
+          
+          if (state == 1) {
+            lcd.clear();
+            lcd.setCursor(0,0);
+            lcd.print(inputMode == 'A' ? "Enter amount in RWF:" : "Enter ml of water:");
+          }
         } 
         else if (key == '#') {
+          if (keyBuffer.length() > 0) {
+            keyBuffer = keyBuffer.substring(0, keyBuffer.length() - 1);
+            lcd.clear();
+            lcd.setCursor(0,0);
+            lcd.print("Input: ");
+            lcd.print(keyBuffer);
+          }
+        }
+        else if (key == 'C') {
           if (state == 1) {
             float input = keyBuffer.toFloat();
             if (input > 0) {
@@ -179,51 +195,104 @@ void loop() {
               }
               lcd.clear();
               lcd.setCursor(0,0);
+              lcd.print("Amount: ");
+              lcd.print(totalAmount);
+              lcd.print(" RWF");
+              lcd.setCursor(0,1);
+              lcd.print("Water: ");
+              lcd.print(waterMilliliters);
+              lcd.print(" mL");
+              delay(2000);
+              
+              lcd.clear();
+              lcd.setCursor(0,0);
               lcd.print("Enter phone number:");
               state = 2;
             }
             keyBuffer = "";
-          } else if (state == 2) {
-            phoneNumber = keyBuffer;
-            state = 3;
-            keyBuffer = "";
+          } 
+          else if (state == 2) {
+            if (keyBuffer.length() >= 10) {
+              phoneNumber = keyBuffer;
+              state = 3;
+              keyBuffer = "";
 
-            if (sendTransactionData()) {
-              Serial.println("Payment successful!");
-              lcd.clear();
-              lcd.setCursor(0,0);
-              lcd.print("Payment successful!");
-              indicateSuccess();
-              delay(2000);
-            } else {
-              Serial.println("Payment failed. Try again.");
-              lcd.clear();
-              lcd.setCursor(0,0);
-              lcd.print("Payment failed.");
-              indicateError();
-              state = 0;
-            }
-
-            while (state == 3) {
-              float distance = readDistance();
-              if (distance <= maxDistance) {
+              if (sendTransactionData()) {
+                Serial.println("Payment successful!");
                 lcd.clear();
                 lcd.setCursor(0,0);
-                lcd.print("Cup detected at ");
-                lcd.print(distance);
+                lcd.print("Processing payment....!");
                 indicateSuccess();
-                startDispensing();
-                state = 0;
-                keyBuffer = "";
-                inputMode = ' ';
+                delay(2000);
+                lcd.setCursor(0,1);
+                lcd.print("Payment successful!");
+                indicateSuccess();
+                
+                while (state == 3) {
+                  float distance = readDistance();
+                  if (distance <= maxDistance) {
+                    lcd.clear();
+                    lcd.setCursor(0,0);
+                    lcd.print("Cup detected");
+                    lcd.setCursor(0,1);
+                    lcd.print("Distance: ");
+                    lcd.print(distance);
+                    lcd.print("cm");
+                    indicateSuccess();
+                    startDispensing();
+                    state = 0;
+                    keyBuffer = "";
+                    inputMode = ' ';
+                    break;
+                  } else {
+                    lcd.clear();
+                    lcd.setCursor(0,0);
+                    lcd.print("Place cup below");
+                    lcd.setCursor(0,1);
+                    lcd.print("Distance: ");
+                    lcd.print(distance);
+                    lcd.print("cm");
+                    delay(1000);
+                  }
+                }
               } else {
+                Serial.println("Payment failed");
                 lcd.clear();
                 lcd.setCursor(0,0);
-                lcd.print("Waiting for cup...");
-                delay(1000);
+                lcd.print("Payment failed");
+                lcd.setCursor(0,1);
+                lcd.print("Try again");
+                indicateError();
+                state = 0;
+                delay(2000);
               }
+            } else {
+              lcd.clear();
+              lcd.setCursor(0,0);
+              lcd.print("Invalid number");
+              lcd.setCursor(0,1);
+              lcd.print("Must be 10 digits");
+              delay(2000);
+              lcd.clear();
+              lcd.setCursor(0,0);
+              lcd.print("Enter phone number:");
+              keyBuffer = "";
             }
           }
+        }
+        else if (key == 'D') {
+          state = 0;
+          keyBuffer = "";
+          inputMode = ' ';
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Choose Input:");
+          lcd.setCursor(0,1);
+          lcd.print("A: Amount in RWF");
+          lcd.setCursor(0,2);
+          lcd.print("B: Water in mL");
+          lcd.setCursor(0,3);
+          lcd.print("Press A or B");
         }
         else if (state == 0 && (key == 'A' || key == 'B')) {
           state = 1;
@@ -296,7 +365,7 @@ delay(500);
       lcd.print("Cup removed! Pausing...");
       indicateError();
       digitalWrite(valvePin, HIGH);
-      delay(1000);
+      // delay(1000);
       Serial.println("Paused due to cup removal. Waiting..."); 
         // lcd.clear();
         lcd.setCursor(1,0);
@@ -313,7 +382,7 @@ delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Cup detected! Resuming...");
-      delay(1000);
+      // delay(1000);
     }
     delay(500);
   }
