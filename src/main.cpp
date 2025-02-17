@@ -317,97 +317,78 @@ void loop() {
 }
 
 void startDispensing() {
-
-
   pulse = 0;
   volume = 0;
-  digitalWrite(valvePin, LOW);
-  
-Serial.println("Starting water dispensing...");
-indicateSuccess();
-lcd.clear();
-lcd.setCursor(0,0);
-lcd.print("Dispensing Water");
-lcd.setCursor(0,1);
-lcd.print("Volume: " + String(volume));
-lcd.setCursor(0,2);
-lcd.print("Target: " + String(waterMilliliters));
-lcd.setCursor(0,3);
-lcd.print("Please wait...");
-digitalWrite(ledGreen, HIGH);
-delay(500);
+  digitalWrite(valvePin, LOW);  // Open the valve to start dispensing
 
+  Serial.println("Starting water dispensing...");
+  indicateSuccess();
 
-  while (volume < waterMilliliters) {
+  // Initial display setup
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Dispensing Water");
+  lcd.setCursor(0, 1);
+  lcd.print("Volume: 0 mL");
+  lcd.setCursor(0, 2);
+  lcd.print("Target: ");
+  lcd.print(waterMilliliters);
+  lcd.print(" mL");
+  lcd.setCursor(0, 3);
+  lcd.print("Status: Running");
+  digitalWrite(ledGreen, HIGH);
 
-    volume = 2.663 * pulse;
-    Serial.printf("Dispensed: %.2f / %.2f mL\n", volume, waterMilliliters);
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Dispensed: ");
-    lcd.print(volume);
-    lcd.setCursor(0,1);
-    lcd.print("Target: ");
-    lcd.print(waterMilliliters);
-    lcd.setCursor(0,2);
-    lcd.print("Please wait...");
-    lcd.setCursor(0,3);
- lcd.print("Volume: ");
-    lcd.print(volume);
-    
-    
+  unsigned long lastUpdate = millis();
+
+  while (true) {
+    volume = 2.663 * pulse;  // Update volume in real-time
+
+    // **Stop dispensing immediately when target is reached**
+    if (volume >= waterMilliliters) {
+      digitalWrite(valvePin, HIGH);  // Close the valve
+      lcd.setCursor(0, 3);
+      lcd.print("Status: Complete ");
+      break;
+    }
+
+    // **Update LCD every 500ms**
+    if (millis() - lastUpdate > 500) {
+      lcd.setCursor(8, 1);
+      lcd.print("       "); // Clear previous value
+      lcd.setCursor(8, 1);
+      lcd.print(volume);
+      lastUpdate = millis();
+    }
+
+    // **Pause dispensing if the cup is removed**
     if (readDistance() > maxDistance) {
       Serial.println("Cup removed! Pausing...");
       digitalWrite(ledGreen, LOW);
       digitalWrite(ledRed, HIGH);
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Cup removed! Pausing...");
+      digitalWrite(valvePin, HIGH); // Pause dispensing
+
+      lcd.setCursor(0, 3);
+      lcd.print("Status: Paused   ");
       indicateError();
-      digitalWrite(valvePin, HIGH);
-      // delay(1000);
-      Serial.println("Paused due to cup removal. Waiting..."); 
-        // lcd.clear();
-        lcd.setCursor(1,0);
-        lcd.print("Paused due to cup");
-        lcd.setCursor(2,1);
-        lcd.print("removal. Waiting...");
-      
-      while (readDistance() > maxDistance) delay(100);
+
+      // Wait until the cup is placed back
+      while (readDistance() > maxDistance) {
+        delay(100);
+      }
+
+      Serial.println("Cup detected! Resuming...");
       digitalWrite(ledGreen, HIGH);
       digitalWrite(ledRed, LOW);
-      digitalWrite(valvePin, LOW);
-      Serial.println("Cup detected! Resuming...");
+      digitalWrite(valvePin, LOW); // Resume dispensing
+      lcd.setCursor(0, 3);
+      lcd.print("Status: Running  ");
       indicateSuccess();
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Cup detected! Resuming...");
-      // delay(1000);
     }
-    delay(500);
   }
-  
-  // sentransaction data to server
-  // sendTransactionData();
-  Serial.println("Closing valve...");
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Closing valve...");
-  digitalWrite(valvePin, HIGH);
-  delay(1000);
-  Serial.println("Stopping water pump...");
 
-  Serial.println("Dispensing complete!");
-  Serial.println("Thank you for using our service");
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Dispensing complete!");
-  lcd.setCursor(0,1);
-  lcd.print("Thank you for using");
-  lcd.setCursor(0,1);
-  lcd.print("our service");
-
-  digitalWrite(ledRed, LOW);
+  // **Final Status Update**
+  lcd.setCursor(0, 3);
+  lcd.print("Status: Complete ");
   digitalWrite(ledGreen, HIGH);
   delay(2000);
   digitalWrite(ledGreen, LOW);
