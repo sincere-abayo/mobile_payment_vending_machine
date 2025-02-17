@@ -12,7 +12,7 @@
 // Add WiFi credentials
 const char* ssid = "GIHANGA AI";
 const char* password = "GIHANGA1";
-const char* serverUrl = "http://192.168.1.26:5000/api/record-transaction";
+const char* serverUrl = "http://192.168.88.87:5000/api/record-transaction";
 
 // Function Prototypes
 void startDispensing();
@@ -30,7 +30,7 @@ char keymap[17] = "123A456B789C*0#D";
 // Ultrasonic sensor pins
 const int trigPin = 15;  // D8
 const int echoPin = 13;  // D7 (GPIO13)
-const int maxDistance = 10; // Cup detection range
+const int maxDistance = 5; // Cup detection range
 
 // led red pin on D3
 const int ledRed = D3; // D3
@@ -323,9 +323,9 @@ void startDispensing() {
   volume = 0;
   digitalWrite(valvePin, LOW);
   
-  Serial.println("Starting water dispensing...");
-  indicateSuccess();
- lcd.clear();
+Serial.println("Starting water dispensing...");
+indicateSuccess();
+lcd.clear();
 lcd.setCursor(0,0);
 lcd.print("Dispensing Water");
 lcd.setCursor(0,1);
