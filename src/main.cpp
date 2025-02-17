@@ -10,9 +10,9 @@
 #define SCL_PIN D1 
 
 // Add WiFi credentials
-const char* ssid = "GIHANGA AI";
-const char* password = "GIHANGA1";
-const char* serverUrl = "http://192.168.88.87:5000/api/record-transaction";
+const char* ssid = "Move";
+const char* password = "11111111";
+const char* serverUrl = "http://192.168.137.68:5000/api/record-transaction";
 
 // Function Prototypes
 void startDispensing();
@@ -44,7 +44,7 @@ const int valvePin = 14;  // D5 (GPIO14) - Controls valve
 // Water Flow Sensor
 const int sensorPin = 2; // GPIO2
 volatile long pulse = 0;
-float volume = 0;
+float volume;
 
 // User Input Handling
 unsigned long lastKeyPress = 0;
@@ -319,12 +319,12 @@ void loop() {
 void startDispensing() {
   pulse = 0;
   volume = 0;
-  digitalWrite(valvePin, LOW);  // Open the valve to start dispensing
+  digitalWrite(valvePin, LOW);  // Open valve to start dispensing
 
   Serial.println("Starting water dispensing...");
   indicateSuccess();
 
-  // Initial display setup
+  // Initial LCD setup
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Dispensing Water");
@@ -336,16 +336,17 @@ void startDispensing() {
   lcd.print(" mL");
   lcd.setCursor(0, 3);
   lcd.print("Status: Running");
-  digitalWrite(ledGreen, HIGH);
 
+  digitalWrite(ledGreen, HIGH);
   unsigned long lastUpdate = millis();
 
   while (true) {
-    volume = 2.663 * pulse;  // Update volume in real-time
+    
+    volume = 2.663 * pulse;  // Update dispensed volume based on flow sensor pulses
 
     // **Stop dispensing immediately when target is reached**
     if (volume >= waterMilliliters) {
-      digitalWrite(valvePin, HIGH);  // Close the valve
+      digitalWrite(valvePin, HIGH); // Close the valve
       lcd.setCursor(0, 3);
       lcd.print("Status: Complete ");
       break;
@@ -365,11 +366,10 @@ void startDispensing() {
       Serial.println("Cup removed! Pausing...");
       digitalWrite(ledGreen, LOW);
       digitalWrite(ledRed, HIGH);
-      digitalWrite(valvePin, HIGH); // Pause dispensing
-
       lcd.setCursor(0, 3);
       lcd.print("Status: Paused   ");
       indicateError();
+      digitalWrite(valvePin, HIGH); // Pause dispensing
 
       // Wait until the cup is placed back
       while (readDistance() > maxDistance) {
@@ -392,7 +392,12 @@ void startDispensing() {
   digitalWrite(ledGreen, HIGH);
   delay(2000);
   digitalWrite(ledGreen, LOW);
+
+  // **Ensure valve is off (extra safety)**
+  digitalWrite(valvePin, HIGH);
 }
+
+
 
 // send transaction data:
 
