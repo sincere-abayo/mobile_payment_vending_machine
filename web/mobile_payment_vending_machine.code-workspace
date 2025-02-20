@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "mobile_payment_vending_machine",
+			"path": "../../Documents/PlatformIO/Projects/mobile_payment_vending_machine"
+		},
+		{
+			"name": "web",
+			"path": "."
+		},
+		{
+			"name": "test",
+			"path": "../../Documents/PlatformIO/Projects/test"
+		}
+	],
+	"settings": {}
+}
