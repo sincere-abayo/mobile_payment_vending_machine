@@ -10,9 +10,9 @@
 #define SCL_PIN D1 
 
 // Add WiFi credentials
-const char* ssid = "Move";
-const char* password = "11111111";
-const char* serverUrl = "http://192.168.137.68:5000/api/record-transaction";
+const char* ssid = "GIHANGA AI";
+const char* password = "GIHANGA1";
+const char* serverUrl = "http://192.168.1.29:5000/api/record-transaction";
 
 // Function Prototypes
 void startDispensing();
@@ -407,14 +407,12 @@ bool sendTransactionData() {
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("WiFi not connected");
-        // blink led red for 5 seconds
         for (int i = 0; i < 5; i++) {
           digitalWrite(ledRed, HIGH);
           delay(500);
           digitalWrite(ledRed, LOW);
           delay(500);
         }
-
         return false;
     }
     
@@ -423,9 +421,15 @@ bool sendTransactionData() {
     http.begin(client, serverUrl);
     http.addHeader("Content-Type", "application/json");
     
+    // Format phone number with country code if not present
+    String formattedPhone = phoneNumber;
+    if (!phoneNumber.startsWith("+25")) {
+        formattedPhone = "+25" + phoneNumber;
+    }
+    
     JsonDocument doc;
-    doc["phone_number"] = phoneNumber;
-    doc["liters_dispensed"] = waterMilliliters/1000;
+    doc["phone_number"] = formattedPhone;
+    doc["liters_dispensed"] = waterMilliliters/1000.0;
     doc["amount_paid"] = totalAmount;
     
     String jsonString;
@@ -436,6 +440,8 @@ bool sendTransactionData() {
     
     return httpResponseCode > 0;
 }
+
+
 void indicateSuccess() {
   digitalWrite(ledGreen, HIGH);
   delay(2000);
