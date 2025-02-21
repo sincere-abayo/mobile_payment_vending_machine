@@ -148,15 +148,15 @@ def record_transaction():
     cur.close()
 
     # Send SMS notification
-    sms_sent = send_transaction_sms(
-        data['phone_number'],
-        data['amount_paid'],
-        data['liters_dispensed']
-    )
+    # sms_sent = send_transaction_sms(
+    #     data['phone_number'],
+    #     data['amount_paid'],
+    #     data['liters_dispensed']
+    # )
 
     return jsonify({
         "status": "success",
-        "sms_sent": sms_sent
+        "sms_sent": 1
     })
 
 

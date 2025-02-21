@@ -151,7 +151,7 @@
                 table.clear(); // Clear existing data
                 data.forEach(transaction => {
                     table.row.add([
-                        new Date(transaction[0]).toLocaleTimeString(),
+                        new Date(transaction[0]).toLocaleString(),
                         transaction[1],
                         transaction[2],
                         transaction[3]

@@ -212,13 +212,12 @@ void loop() {
             keyBuffer = "";
           } 
           else if (state == 2) {
-            if (keyBuffer.length() >= 10) {
+            if (keyBuffer.length() == 10) {
               phoneNumber = keyBuffer;
               state = 3;
               keyBuffer = "";
 
               if (sendTransactionData()) {
-                Serial.println("Payment successful!");
                 lcd.clear();
                 lcd.setCursor(0,0);
                 lcd.print("Processing payment....!");
@@ -226,6 +225,8 @@ void loop() {
                 delay(2000);
                 lcd.setCursor(0,1);
                 lcd.print("Payment successful!");
+                Serial.println("Payment successful!");
+
                 indicateSuccess();
                 
                 while (state == 3) {
@@ -238,8 +239,8 @@ void loop() {
                     lcd.print("Distance: ");
                     lcd.print(distance);
                     lcd.print("cm");
-                    indicateSuccess();
                     startDispensing();
+                    indicateSuccess();
                     state = 0;
                     keyBuffer = "";
                     inputMode = ' ';
@@ -338,38 +339,52 @@ void startDispensing() {
   lcd.print("Status: Running");
 
   digitalWrite(ledGreen, HIGH);
-  unsigned long lastUpdate = millis();
 
   while (true) {
     
     volume = 2.663 * pulse;  // Update dispensed volume based on flow sensor pulses
 
     // **Stop dispensing immediately when target is reached**
-    if (volume >= waterMilliliters) {
-      digitalWrite(valvePin, HIGH); // Close the valve
+  if (volume >= waterMilliliters) {
+      digitalWrite(valvePin, HIGH);
       lcd.setCursor(0, 3);
       lcd.print("Status: Complete ");
+      digitalWrite(ledGreen, HIGH);
+      delay(2000);
+      digitalWrite(ledGreen, LOW);
+      
+      // Return to main menu
+      lcd.clear();
+      lcd.setCursor(1,0);
+      lcd.print(" Type Input:");
+      lcd.setCursor(0,1);
+      lcd.print("A: Amount in RWF");
+      lcd.setCursor(0,2);
+      lcd.print("B: Water in mL");
+      lcd.setCursor(0,3);
+      lcd.print("Press A or B to start");
+      
       break;
     }
 
     // **Update LCD every 500ms**
-    if (millis() - lastUpdate > 500) {
+    // if (millis() - lastUpdate > 500) {
       lcd.setCursor(8, 1);
       lcd.print("       "); // Clear previous value
       lcd.setCursor(8, 1);
       lcd.print(volume);
-      lastUpdate = millis();
-    }
+    // }
 
     // **Pause dispensing if the cup is removed**
     if (readDistance() > maxDistance) {
+      digitalWrite(valvePin, HIGH); // Pause dispensing
+
       Serial.println("Cup removed! Pausing...");
       digitalWrite(ledGreen, LOW);
       digitalWrite(ledRed, HIGH);
       lcd.setCursor(0, 3);
       lcd.print("Status: Paused   ");
       indicateError();
-      digitalWrite(valvePin, HIGH); // Pause dispensing
 
       // Wait until the cup is placed back
       while (readDistance() > maxDistance) {
@@ -377,9 +392,10 @@ void startDispensing() {
       }
 
       Serial.println("Cup detected! Resuming...");
+      digitalWrite(valvePin, LOW); // Resume dispensing
+
       digitalWrite(ledGreen, HIGH);
       digitalWrite(ledRed, LOW);
-      digitalWrite(valvePin, LOW); // Resume dispensing
       lcd.setCursor(0, 3);
       lcd.print("Status: Running  ");
       indicateSuccess();
@@ -387,14 +403,14 @@ void startDispensing() {
   }
 
   // **Final Status Update**
+  // **Ensure valve is off (extra safety)**
+  digitalWrite(valvePin, HIGH);
+  lcd.print("Status: Complete "); 
   lcd.setCursor(0, 3);
-  lcd.print("Status: Complete ");
   digitalWrite(ledGreen, HIGH);
   delay(2000);
   digitalWrite(ledGreen, LOW);
 
-  // **Ensure valve is off (extra safety)**
-  digitalWrite(valvePin, HIGH);
 }
 
 
