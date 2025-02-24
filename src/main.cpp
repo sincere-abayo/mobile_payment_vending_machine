@@ -10,9 +10,9 @@
 #define SCL_PIN D1 
 
 // Add WiFi credentials
-const char* ssid = "GIHANGA AI";
-const char* password = "GIHANGA1";
-const char* serverUrl = "http://192.168.1.29:5000/api/record-transaction";
+const char* ssid = "Move";
+const char* password = "11111111";
+const char* serverUrl = "http://192.168.137.68:5000/api/record-transaction";
 
 // Function Prototypes
 void startDispensing();
@@ -75,13 +75,29 @@ void IRAM_ATTR increase() {
   pulse++;
 }
 
+// reset function
+void resetESP() {
+    Serial.println("Performing hardware reset...");
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Resetting System");
+    ESP.restart();  // Hardware reset of ESP8266
+    delay(1000);
+    
+}
+
 void setup() {
+  Serial.begin(115200);
+// Add watchdog timer
+    ESP.wdtDisable();
+    ESP.wdtEnable(WDTO_8S);
+     // Optional: Force reset after power up
+    // resetESP();
   WiFi.begin(ssid, password);
 
   pinMode(valvePin, OUTPUT);
   digitalWrite(valvePin, HIGH);
 
-  Serial.begin(115200);
 
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);

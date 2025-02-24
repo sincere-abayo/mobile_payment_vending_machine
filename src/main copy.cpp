@@ -10,9 +10,9 @@
 // #define SCL_PIN D1 
 
 // // Add WiFi credentials
-// const char* ssid = "GIHANGA AI";
-// const char* password = "GIHANGA1";
-// const char* serverUrl = "http://192.168.88.87:5000/api/record-transaction";
+// const char* ssid = "Move";
+// const char* password = "11111111";
+// const char* serverUrl = "http://192.168.137.68:5000/api/record-transaction";
 
 // // Function Prototypes
 // void startDispensing();
@@ -44,7 +44,7 @@
 // // Water Flow Sensor
 // const int sensorPin = 2; // GPIO2
 // volatile long pulse = 0;
-// float volume = 0;
+// float volume;
 
 // // User Input Handling
 // unsigned long lastKeyPress = 0;
@@ -75,13 +75,29 @@
 //   pulse++;
 // }
 
+// // reset function
+// void resetESP() {
+//     Serial.println("Performing hardware reset...");
+//     lcd.clear();
+//     lcd.setCursor(0,0);
+//     lcd.print("Resetting System");
+//     ESP.restart();  // Hardware reset of ESP8266
+//     delay(1000);
+    
+// }
+
 // void setup() {
+//   Serial.begin(115200);
+// // Add watchdog timer
+//     ESP.wdtDisable();
+//     ESP.wdtEnable(WDTO_8S);
+//      // Optional: Force reset after power up
+//     // resetESP();
 //   WiFi.begin(ssid, password);
 
 //   pinMode(valvePin, OUTPUT);
 //   digitalWrite(valvePin, HIGH);
 
-//   Serial.begin(115200);
 
 //   pinMode(trigPin, OUTPUT);
 //   pinMode(echoPin, INPUT);
@@ -212,13 +228,12 @@
 //             keyBuffer = "";
 //           } 
 //           else if (state == 2) {
-//             if (keyBuffer.length() >= 10) {
+//             if (keyBuffer.length() == 10) {
 //               phoneNumber = keyBuffer;
 //               state = 3;
 //               keyBuffer = "";
 
 //               if (sendTransactionData()) {
-//                 Serial.println("Payment successful!");
 //                 lcd.clear();
 //                 lcd.setCursor(0,0);
 //                 lcd.print("Processing payment....!");
@@ -226,6 +241,8 @@
 //                 delay(2000);
 //                 lcd.setCursor(0,1);
 //                 lcd.print("Payment successful!");
+//                 Serial.println("Payment successful!");
+
 //                 indicateSuccess();
                 
 //                 while (state == 3) {
@@ -238,8 +255,8 @@
 //                     lcd.print("Distance: ");
 //                     lcd.print(distance);
 //                     lcd.print("cm");
-//                     indicateSuccess();
 //                     startDispensing();
+//                     indicateSuccess();
 //                     state = 0;
 //                     keyBuffer = "";
 //                     inputMode = ' ';
@@ -319,87 +336,100 @@
 // void startDispensing() {
 //   pulse = 0;
 //   volume = 0;
-//   digitalWrite(valvePin, LOW);
-  
+//   digitalWrite(valvePin, LOW);  // Open valve to start dispensing
+
 //   Serial.println("Starting water dispensing...");
 //   indicateSuccess();
-  
-//   // Initial display setup
+
+//   // Initial LCD setup
 //   lcd.clear();
-//   lcd.setCursor(0,0);
+//   lcd.setCursor(0, 0);
 //   lcd.print("Dispensing Water");
-//   lcd.setCursor(0,1);
-//   lcd.print("Volume: ");
-//   lcd.print(volume);
-//   lcd.print(" mL");
-//   lcd.setCursor(0,2);
+//   lcd.setCursor(0, 1);
+//   lcd.print("Volume: 0 mL");
+//   lcd.setCursor(0, 2);
 //   lcd.print("Target: ");
 //   lcd.print(waterMilliliters);
 //   lcd.print(" mL");
-//   lcd.setCursor(0,3);
+//   lcd.setCursor(0, 3);
 //   lcd.print("Status: Running");
+
 //   digitalWrite(ledGreen, HIGH);
 
-//   unsigned long lastUpdate = millis();
-  
-//   while (volume < waterMilliliters) {
-//     volume = 2.663 * pulse;
+//   while (true) {
     
-//     // Update display every 500ms
-//     if (millis() - lastUpdate > 500) {
-//       lcd.setCursor(8,1);
-//       lcd.print("       "); // Clear previous value
-//       lcd.setCursor(8,1);
-//       lcd.print(volume);
-      
-//       lcd.setCursor(8,2);
-//       lcd.print("       "); // Clear previous value
-//       lcd.setCursor(8,2);
-//       lcd.print(waterMilliliters);
-      
-//       lastUpdate = millis();
-//     }
+//     volume = 2.663 * pulse;  // Update dispensed volume based on flow sensor pulses
 
-//     // Check if target volume reached
-//     if (volume >= waterMilliliters) {
+//     // **Stop dispensing immediately when target is reached**
+//   if (volume >= waterMilliliters) {
 //       digitalWrite(valvePin, HIGH);
-//       lcd.setCursor(0,3);
+//       lcd.setCursor(0, 3);
 //       lcd.print("Status: Complete ");
+//       digitalWrite(ledGreen, HIGH);
+//       delay(2000);
+//       digitalWrite(ledGreen, LOW);
+      
+//       // Return to main menu
+//       lcd.clear();
+//       lcd.setCursor(1,0);
+//       lcd.print(" Type Input:");
+//       lcd.setCursor(0,1);
+//       lcd.print("A: Amount in RWF");
+//       lcd.setCursor(0,2);
+//       lcd.print("B: Water in mL");
+//       lcd.setCursor(0,3);
+//       lcd.print("Press A or B to start");
+      
 //       break;
 //     }
 
-    
-    
-//     // Cup detection and pause/resume logic
+//     // **Update LCD every 500ms**
+//     // if (millis() - lastUpdate > 500) {
+//       lcd.setCursor(8, 1);
+//       lcd.print("       "); // Clear previous value
+//       lcd.setCursor(8, 1);
+//       lcd.print(volume);
+//     // }
+
+//     // **Pause dispensing if the cup is removed**
 //     if (readDistance() > maxDistance) {
+//       digitalWrite(valvePin, HIGH); // Pause dispensing
+
 //       Serial.println("Cup removed! Pausing...");
 //       digitalWrite(ledGreen, LOW);
 //       digitalWrite(ledRed, HIGH);
-//       lcd.setCursor(0,3);
-//       lcd.print("Status: Paused    ");
+//       lcd.setCursor(0, 3);
+//       lcd.print("Status: Paused   ");
 //       indicateError();
-//       digitalWrite(valvePin, HIGH);
-      
+
+//       // Wait until the cup is placed back
 //       while (readDistance() > maxDistance) {
 //         delay(100);
 //       }
-      
+
+//       Serial.println("Cup detected! Resuming...");
+//       digitalWrite(valvePin, LOW); // Resume dispensing
+
 //       digitalWrite(ledGreen, HIGH);
 //       digitalWrite(ledRed, LOW);
-//       digitalWrite(valvePin, LOW);
-//       lcd.setCursor(0,3);
-//       lcd.print("Status: Running   ");
+//       lcd.setCursor(0, 3);
+//       lcd.print("Status: Running  ");
 //       indicateSuccess();
 //     }
 //   }
-  
-//   // Final status display
-//   lcd.setCursor(0,3);
-//   lcd.print("Status: Complete ");
+
+//   // **Final Status Update**
+//   // **Ensure valve is off (extra safety)**
+//   digitalWrite(valvePin, HIGH);
+//   lcd.print("Status: Complete "); 
+//   lcd.setCursor(0, 3);
 //   digitalWrite(ledGreen, HIGH);
 //   delay(2000);
 //   digitalWrite(ledGreen, LOW);
+
 // }
+
+
 
 // // send transaction data:
 
@@ -409,14 +439,12 @@
 //         lcd.clear();
 //         lcd.setCursor(0,0);
 //         lcd.print("WiFi not connected");
-//         // blink led red for 5 seconds
 //         for (int i = 0; i < 5; i++) {
 //           digitalWrite(ledRed, HIGH);
 //           delay(500);
 //           digitalWrite(ledRed, LOW);
 //           delay(500);
 //         }
-
 //         return false;
 //     }
     
@@ -425,9 +453,15 @@
 //     http.begin(client, serverUrl);
 //     http.addHeader("Content-Type", "application/json");
     
+//     // Format phone number with country code if not present
+//     String formattedPhone = phoneNumber;
+//     if (!phoneNumber.startsWith("+25")) {
+//         formattedPhone = "+25" + phoneNumber;
+//     }
+    
 //     JsonDocument doc;
-//     doc["phone_number"] = phoneNumber;
-//     doc["liters_dispensed"] = waterMilliliters/1000;
+//     doc["phone_number"] = formattedPhone;
+//     doc["liters_dispensed"] = waterMilliliters/1000.0;
 //     doc["amount_paid"] = totalAmount;
     
 //     String jsonString;
@@ -438,6 +472,8 @@
     
 //     return httpResponseCode > 0;
 // }
+
+
 // void indicateSuccess() {
 //   digitalWrite(ledGreen, HIGH);
 //   delay(2000);

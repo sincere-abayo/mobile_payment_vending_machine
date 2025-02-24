@@ -153,10 +153,11 @@ def record_transaction():
     #     data['amount_paid'],
     #     data['liters_dispensed']
     # )
+    sms_sent = True
 
     return jsonify({
         "status": "success",
-        "sms_sent": 1
+        "sms_sent": sms_sent
     })
 
 
