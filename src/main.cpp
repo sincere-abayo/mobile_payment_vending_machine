@@ -125,6 +125,7 @@ void setup() {
     lcd.setCursor(0,0);
     lcd.clear();
     lcd.print("WiFi connecting....");   
+    indicateSuccess();
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -135,7 +136,7 @@ void setup() {
     lcd.print("Reconnected to WiFi");
     indicateSuccess();
     delay(1000);
-
+digitalWrite(ledGreen, LOW);
   }
 
   if (keyPad.begin()) {
@@ -234,36 +235,38 @@ void loop() {
               phoneNumber = keyBuffer;
               state = 3;
               keyBuffer = "";
-
-              if (sendTransactionData()) {
-                lcd.clear();
+                 lcd.clear();
                 lcd.setCursor(0,0);
                 lcd.print("Processing payment....!");
                 indicateSuccess();
+
+              if (sendTransactionData()) {
+             
                 delay(2000);
+                lcd.clear();
                 lcd.setCursor(0,1);
                 lcd.print("Payment successful!");
                 Serial.println("Payment successful!");
-
-                indicateSuccess();
-                
+                digitalWrite(ledGreen, LOW);
                 while (state == 3) {
                   float distance = readDistance();
                   if (distance <= maxDistance) {
                     lcd.clear();
                     lcd.setCursor(0,0);
+                    indicateSuccess();
                     lcd.print("Cup detected");
                     lcd.setCursor(0,1);
                     lcd.print("Distance: ");
                     lcd.print(distance);
                     lcd.print("cm");
                     startDispensing();
-                    indicateSuccess();
                     state = 0;
                     keyBuffer = "";
                     inputMode = ' ';
                     break;
                   } else {
+                indicateError();
+
                     lcd.clear();
                     lcd.setCursor(0,0);
                     lcd.print("Place cup below");
@@ -272,6 +275,7 @@ void loop() {
                     lcd.print(distance);
                     lcd.print("cm");
                     delay(1000);
+
                   }
                 }
               } else {
@@ -284,6 +288,15 @@ void loop() {
                 indicateError();
                 state = 0;
                 delay(2000);
+                lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Choose Input:");
+          lcd.setCursor(0,1);
+          lcd.print("A: Amount in RWF");
+          lcd.setCursor(0,2);
+          lcd.print("B: Water in mL");
+          lcd.setCursor(0,3);
+          lcd.print("Press A or B");
               }
             } else {
               lcd.clear();
@@ -296,6 +309,7 @@ void loop() {
               lcd.setCursor(0,0);
               lcd.print("Enter phone number:");
               keyBuffer = "";
+              indicateError();
             }
           }
         }
@@ -335,6 +349,7 @@ void loop() {
   delay(50);
 }
 
+// one with good flow sensor calculation
 void startDispensing() {
   pulse = 0;
   volume = 0;
@@ -348,19 +363,12 @@ void startDispensing() {
   digitalWrite(valvePin, LOW);  // Open valve
   Serial.println("Starting dispensing...");
 
+  bool cupDetected = true;
+  float lastVolumeDispensed = 0;
+
   while (true) {
     unsigned long currentTime = millis();
     
-    // Timeout protection
-    // if (currentTime - startTime > TIMEOUT_MS) {
-    //   digitalWrite(valvePin, HIGH);
-    //   lcd.setCursor(0, 3);
-    //   lcd.print("Status: Timeout Error");
-    //   indicateError();
-    //   delay(2000);
-    //   break;
-    // }
-
     // Calculate volume with new calibration
     volume = (pulse / calibrationFactor) * 1000 / 60;
     
@@ -370,45 +378,81 @@ void startDispensing() {
       lastVolume = volume;
       lastFlowCheck = currentTime;
       
-      // if (flowRate < MIN_FLOW_RATE && volume < waterMilliliters) {
-      //   lcd.setCursor(0, 3);
-      //   lcd.print("Status: Low Flow    ");
-      //   indicateError();
-      //   delay(1000);
-      // }
     }
 
-    // Flow sensor error detection
-    // if (pulse > 0 && currentTime - lastPulseTime > 5000) {
-    //   digitalWrite(valvePin, HIGH);
-    //   lcd.setCursor(0, 3);
-    //   lcd.print("Status: Sensor Error");
-    //   indicateError();
-    //   delay(2000);
-    //   break;
-    // }
-
-    // Update display
-      lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Dispensing Water");
-  lcd.setCursor(0, 1);
-  lcd.print("Spensing: ");
-  lcd.print(volume);
-  lcd.print(" mL");
-  lcd.setCursor(0, 2);
-  lcd.print("Target: ");
-  lcd.print(waterMilliliters);
-  lcd.print(" mL");
-  lcd.setCursor(0, 3);
-  lcd.print("Status: Running");
-    
-    // Target volume reached
-    if (volume >= waterMilliliters) {
-      digitalWrite(valvePin, HIGH);
-      lcd.setCursor(0, 3);
-      lcd.print("Status: Complete    ");
+    // Check for cup detection
+    float distance = readDistance();
+    if (distance <= maxDistance) {
+      cupDetected = true;
       indicateSuccess();
+    } else {
+      cupDetected = false;
+      indicateError();
+    }
+
+   // Update display
+lcd.clear();
+lcd.setCursor(0, 0);
+lcd.print("Water Dispenser");
+lcd.setCursor(0, 1);
+lcd.print("Dispensing: ");
+lcd.print(volume);
+lcd.print(" mL / ");
+lcd.print(waterMilliliters);
+lcd.print(" mL");
+
+// Display progress bar
+int progress = map(volume, 0, waterMilliliters, 0, 16);
+for (int i = 0; i < 16; i++) {
+  if (i < progress) {
+    lcd.setCursor(i, 2);
+    lcd.print("*");
+  } else {
+    lcd.setCursor(i, 2);
+    lcd.print("-");
+  }
+}
+
+    // Check if cup is removed during dispensing
+    if (!cupDetected) {
+      digitalWrite(valvePin, HIGH);  // Close valve
+      lastVolumeDispensed = volume;
+      lcd.setCursor(0, 3);
+      lcd.print("Cup removed. Waiting...");
+      while (true) {
+        distance = readDistance();
+        if (distance <= maxDistance) {
+          cupDetected = true;
+          digitalWrite(valvePin, LOW);  // Open valve
+          lcd.setCursor(0, 3);
+          lcd.print("Cup detected. Continuing...");
+          break;
+        }
+        delay(100);
+      }
+    }
+
+    // Check if target volume is reached
+    if (volume >= waterMilliliters) {
+      digitalWrite(valvePin, HIGH);  // Close valve
+      lcd.clear();
+      lcd.setCursor(0, 1);
+        lcd.print("Dispensing complete!");
+        lcd.setCursor(1,0);
+        lcd.print("Thank u for using our service.");
+
+      Serial.println("Dispensing complete.");
+      delay(2000);
+      lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Choose Input:");
+          lcd.setCursor(0,1);
+          lcd.print("A: Amount in RWF");
+          lcd.setCursor(0,2);
+          lcd.print("B: Water in mL");
+          lcd.setCursor(0,3);
+          lcd.print("Press A or B");
+
       break;
     }
 
@@ -420,9 +464,6 @@ void startDispensing() {
   pulse = 0;
   volume = 0;
 }
-
-
-
 // send transaction data:
 
 bool sendTransactionData() {
@@ -467,13 +508,13 @@ bool sendTransactionData() {
 
 
 void indicateSuccess() {
+  digitalWrite(ledRed, LOW);
   digitalWrite(ledGreen, HIGH);
-  delay(2000);
-  digitalWrite(ledGreen, LOW);
+  // delay(2000);
 }
 
 void indicateError() {
+  digitalWrite(ledGreen, LOW);
   digitalWrite(ledRed, HIGH);
-  delay(2000);
-  digitalWrite(ledRed, LOW);
+  // delay(2000);
 }
