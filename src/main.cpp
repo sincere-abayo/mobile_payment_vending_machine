@@ -45,6 +45,8 @@ const int valvePin = 14;  // D5 (GPIO14) - Controls valve
 const int sensorPin = 2; // GPIO2
 volatile long pulse = 0;
 float volume;
+const float calibrationFactor = 7.5; // Adjust this value based on testing
+float lastVolume = 0;
 
 // User Input Handling
 unsigned long lastKeyPress = 0;
@@ -336,97 +338,87 @@ void loop() {
 void startDispensing() {
   pulse = 0;
   volume = 0;
-  digitalWrite(valvePin, LOW);  // Open valve to start dispensing
+  unsigned long startTime = millis();
+  unsigned long lastPulseTime = startTime;
+  unsigned long lastFlowCheck = startTime;
+  const unsigned long TIMEOUT_MS = 30000; // 30 second timeout
+  const unsigned long FLOW_CHECK_INTERVAL = 2000; // Check flow every 2 seconds
+  const float MIN_FLOW_RATE = 0.5; // Minimum flow rate in mL/second
 
-  Serial.println("Starting water dispensing...");
-  indicateSuccess();
+  digitalWrite(valvePin, LOW);  // Open valve
+  Serial.println("Starting dispensing...");
 
-  // Initial LCD setup
-  lcd.clear();
+  while (true) {
+    unsigned long currentTime = millis();
+    
+    // Timeout protection
+    // if (currentTime - startTime > TIMEOUT_MS) {
+    //   digitalWrite(valvePin, HIGH);
+    //   lcd.setCursor(0, 3);
+    //   lcd.print("Status: Timeout Error");
+    //   indicateError();
+    //   delay(2000);
+    //   break;
+    // }
+
+    // Calculate volume with new calibration
+    volume = (pulse / calibrationFactor) * 1000 / 60;
+    
+    // Flow rate monitoring
+    if (currentTime - lastFlowCheck >= FLOW_CHECK_INTERVAL) {
+      float flowRate = (volume - lastVolume) / ((currentTime - lastFlowCheck) / 1000.0);
+      lastVolume = volume;
+      lastFlowCheck = currentTime;
+      
+      // if (flowRate < MIN_FLOW_RATE && volume < waterMilliliters) {
+      //   lcd.setCursor(0, 3);
+      //   lcd.print("Status: Low Flow    ");
+      //   indicateError();
+      //   delay(1000);
+      // }
+    }
+
+    // Flow sensor error detection
+    // if (pulse > 0 && currentTime - lastPulseTime > 5000) {
+    //   digitalWrite(valvePin, HIGH);
+    //   lcd.setCursor(0, 3);
+    //   lcd.print("Status: Sensor Error");
+    //   indicateError();
+    //   delay(2000);
+    //   break;
+    // }
+
+    // Update display
+      lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Dispensing Water");
   lcd.setCursor(0, 1);
-  lcd.print("Volume: 0 mL");
+  lcd.print("Spensing: ");
+  lcd.print(volume);
+  lcd.print(" mL");
   lcd.setCursor(0, 2);
   lcd.print("Target: ");
   lcd.print(waterMilliliters);
   lcd.print(" mL");
   lcd.setCursor(0, 3);
   lcd.print("Status: Running");
-
-  digitalWrite(ledGreen, HIGH);
-
-  while (true) {
     
-    volume = 2.663 * pulse;  // Update dispensed volume based on flow sensor pulses
-
-    // **Stop dispensing immediately when target is reached**
-  if (volume >= waterMilliliters) {
+    // Target volume reached
+    if (volume >= waterMilliliters) {
       digitalWrite(valvePin, HIGH);
       lcd.setCursor(0, 3);
-      lcd.print("Status: Complete ");
-      digitalWrite(ledGreen, HIGH);
-      delay(2000);
-      digitalWrite(ledGreen, LOW);
-      
-      // Return to main menu
-      lcd.clear();
-      lcd.setCursor(1,0);
-      lcd.print(" Type Input:");
-      lcd.setCursor(0,1);
-      lcd.print("A: Amount in RWF");
-      lcd.setCursor(0,2);
-      lcd.print("B: Water in mL");
-      lcd.setCursor(0,3);
-      lcd.print("Press A or B to start");
-      
+      lcd.print("Status: Complete    ");
+      indicateSuccess();
       break;
     }
 
-    // **Update LCD every 500ms**
-    // if (millis() - lastUpdate > 500) {
-      lcd.setCursor(8, 1);
-      lcd.print("       "); // Clear previous value
-      lcd.setCursor(8, 1);
-      lcd.print(volume);
-    // }
-
-    // **Pause dispensing if the cup is removed**
-    if (readDistance() > maxDistance) {
-      digitalWrite(valvePin, HIGH); // Pause dispensing
-
-      Serial.println("Cup removed! Pausing...");
-      digitalWrite(ledGreen, LOW);
-      digitalWrite(ledRed, HIGH);
-      lcd.setCursor(0, 3);
-      lcd.print("Status: Paused   ");
-      indicateError();
-
-      // Wait until the cup is placed back
-      while (readDistance() > maxDistance) {
-        delay(100);
-      }
-
-      Serial.println("Cup detected! Resuming...");
-      digitalWrite(valvePin, LOW); // Resume dispensing
-
-      digitalWrite(ledGreen, HIGH);
-      digitalWrite(ledRed, LOW);
-      lcd.setCursor(0, 3);
-      lcd.print("Status: Running  ");
-      indicateSuccess();
-    }
+    delay(100);
   }
 
-  // **Final Status Update**
-  // **Ensure valve is off (extra safety)**
+  // Reset system state
   digitalWrite(valvePin, HIGH);
-  lcd.print("Status: Complete "); 
-  lcd.setCursor(0, 3);
-  digitalWrite(ledGreen, HIGH);
-  delay(2000);
-  digitalWrite(ledGreen, LOW);
-
+  pulse = 0;
+  volume = 0;
 }
 
 
