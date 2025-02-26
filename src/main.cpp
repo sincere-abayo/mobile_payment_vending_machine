@@ -35,14 +35,14 @@ const int maxDistance = 5; // Cup detection range
 // led red pin on D3
 const int ledRed = D3; // D3
 // led green pin on D6
-const int ledGreen = D6; // D6
+const int ledGreen = D4; // D4
 void indicateSuccess();
 void indicateError();
 // Relays for valve and water pump
 const int valvePin = 14;  // D5 (GPIO14) - Controls valve
 
 // Water Flow Sensor
-const int sensorPin = 2; // GPIO2
+const int sensorPin = D6; // GPIO2
 volatile long pulse = 0;
 float volume;
 const float calibrationFactor = 7.5; // Adjust this value based on testing
